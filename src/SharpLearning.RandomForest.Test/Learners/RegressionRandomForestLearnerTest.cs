@@ -11,6 +11,8 @@ using SharpLearning.RandomForest.Test.Properties;
 
 namespace SharpLearning.RandomForest.Test.Learners
 {
+    using SharpLearning.RandomForest.Models;
+
     [TestClass]
     public class RegressionRandomForestLearnerTest
     {
@@ -87,7 +89,8 @@ namespace SharpLearning.RandomForest.Test.Learners
             indices = indices.Take((int)(targets.Length * 0.7))
                 .ToArray();
 
-            var model = sut.Learn(observations, targets, indices);
+            var decisionTreeModels = sut.Learn(observations, targets, indices, out var rawVariableImportance).ToArray();
+            var model = new RegressionForestModel(decisionTreeModels, rawVariableImportance);
 
             var predictions = model.Predict(observations);
 

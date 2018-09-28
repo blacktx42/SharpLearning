@@ -11,6 +11,8 @@ using SharpLearning.RandomForest.Models;
 
 namespace SharpLearning.RandomForest.Learners
 {
+    using System.Collections.Generic;
+
     /// <summary>
     /// Trains a regression random forest
     /// http://en.wikipedia.org/wiki/Random_forest
@@ -69,17 +71,31 @@ namespace SharpLearning.RandomForest.Learners
         public RegressionForestModel Learn(F64Matrix observations, double[] targets)
         {
             var indices = Enumerable.Range(0, targets.Length).ToArray();
-            return Learn(observations, targets, indices);
+            var models = Learn(observations, targets, indices, out var rawVariableImportance).ToArray();
+            return new RegressionForestModel(models, rawVariableImportance);
         }
-
+        
+        /// <summary>
+        /// Learns a classification random forest
+        /// </summary>
+        /// <param name="observations"></param>
+        /// <param name="targets"></param>
+        /// <returns></returns>
+        public IEnumerable<RegressionDecisionTreeModel> Learn(F64Matrix observations, double[] targets, out double[] rawVariableImportance)
+        {
+            var indices = Enumerable.Range(0, targets.Length).ToArray();
+            return Learn(observations, targets, indices, out rawVariableImportance);
+        }
+        
         /// <summary>
         /// Learns a classification random forest
         /// </summary>
         /// <param name="observations"></param>
         /// <param name="targets"></param>
         /// <param name="indices"></param>
+        /// <param name="subModels"></param>
         /// <returns></returns>
-        public RegressionForestModel Learn(F64Matrix observations, double[] targets, int[] indices)
+        public IEnumerable<RegressionDecisionTreeModel> Learn(F64Matrix observations, double[] targets, int[] indices, out double[] rawVariableImportance)
         {
             Checks.VerifyObservationsAndTargets(observations, targets);
             Checks.VerifyIndices(indices, observations, targets);
@@ -116,12 +132,11 @@ namespace SharpLearning.RandomForest.Learners
                     results.TryAdd(indexToRandom.Index, tree);
                 });
             }
-
+            
             // Ensure the order of the trees.
             var models = results.OrderBy(v => v.Key).Select(v => v.Value).ToArray();
-            var rawVariableImportance = VariableImportance(models, observations.ColumnCount);
-
-            return new RegressionForestModel(models, rawVariableImportance);
+            rawVariableImportance = VariableImportance(models, observations.ColumnCount);
+            return models;
         }
 
         /// <summary>
@@ -133,7 +148,8 @@ namespace SharpLearning.RandomForest.Learners
         /// <returns></returns>
         IPredictorModel<double> IIndexedLearner<double>.Learn(F64Matrix observations, double[] targets, int[] indices)
         {
-            return Learn(observations, targets, indices);
+            var models = Learn(observations, targets, indices, out var rawVariableImportance).ToArray();
+            return new RegressionForestModel(models, rawVariableImportance);
         }
 
         /// <summary>
